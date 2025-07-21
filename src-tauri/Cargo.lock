@@ -3954,7 +3954,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "terminal"
+name = "termios"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5d9cf598a6d7ce700a4e6a9199da127e6819a61e64b68609683cc9a01b5683a"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "thinkle"
 version = "0.1.0"
 dependencies = [
  "futures",
@@ -3966,15 +3975,6 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "uuid",
-]
-
-[[package]]
-name = "termios"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5d9cf598a6d7ce700a4e6a9199da127e6819a61e64b68609683cc9a01b5683a"
-dependencies = [
- "libc",
 ]
 
 [[package]]
