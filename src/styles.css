@@ -1,0 +1,439 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    font-family:
+        "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+        "Courier New", monospace;
+    background-color: #1a1b26;
+    color: #c0caf5;
+    overflow: hidden;
+}
+
+#app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1a1b26 0%, #24283b 100%);
+}
+
+/* Loading screen */
+#loading {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #1a1b26;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top: 3px solid #7aa2f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#loading p {
+    color: #c0caf5;
+    font-size: 14px;
+    font-weight: 300;
+}
+
+/* Tabs header */
+#tabs-header {
+    display: flex;
+    align-items: center;
+    background: #24283b;
+    border-bottom: 1px solid #3b4261;
+    padding: 0 16px;
+    min-height: 36px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+#tabs-container {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 2px;
+}
+
+#tabs-container::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    min-width: 120px;
+    max-width: 200px;
+    height: 28px;
+    background: rgba(65, 72, 104, 0.5);
+    border: 1px solid transparent;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    margin-top: 4px;
+}
+
+.tab:hover {
+    background: rgba(122, 162, 247, 0.2);
+    border-color: rgba(122, 162, 247, 0.3);
+}
+
+.tab.active {
+    background: #1a1b26;
+    border-color: #3b4261;
+    border-bottom-color: #1a1b26;
+    margin-bottom: -1px;
+}
+
+.tab-title {
+    flex: 1;
+    padding: 0 12px;
+    font-size: 12px;
+    color: #c0caf5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+}
+
+.tab.active .tab-title {
+    font-weight: 500;
+}
+
+.tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    color: #a9b1d6;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0;
+}
+
+.tab:hover .tab-close {
+    opacity: 1;
+}
+
+.tab-close:hover {
+    background: rgba(247, 118, 142, 0.2);
+    color: #f7768e;
+}
+
+/* Tab drag and drop styles */
+.tab.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+    z-index: 1000;
+}
+
+.tab.drag-over {
+    border-left: 3px solid #7aa2f7;
+    background: rgba(122, 162, 247, 0.3);
+}
+
+.tab-title-input {
+    background: transparent !important;
+    border: 1px solid #7aa2f7 !important;
+    border-radius: 3px !important;
+    color: #c0caf5 !important;
+    font-size: 12px !important;
+    font-family: inherit !important;
+    padding: 2px 4px !important;
+    width: 100% !important;
+    outline: none !important;
+}
+
+#new-tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: 8px;
+    background: rgba(158, 206, 106, 0.2);
+    color: #9ece6a;
+    border: 1px solid rgba(158, 206, 106, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 300;
+    transition: all 0.2s ease;
+}
+
+#new-tab-btn:hover {
+    background: rgba(158, 206, 106, 0.3);
+    border-color: rgba(158, 206, 106, 0.5);
+    transform: scale(1.05);
+}
+
+/* Terminal container */
+#terminal-container {
+    flex: 1;
+    padding: 0;
+    background-color: #1a1b26;
+    overflow: hidden;
+    position: relative;
+}
+
+.terminal-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* XTerm.js overrides */
+.xterm {
+    height: 100% !important;
+    padding: 16px !important;
+}
+
+.xterm .xterm-viewport {
+    background-color: transparent !important;
+}
+
+.xterm .xterm-screen {
+    background-color: transparent !important;
+}
+
+.xterm-cursor-layer .xterm-cursor {
+    background-color: #c0caf5 !important;
+}
+
+.xterm-cursor-layer .xterm-cursor.xterm-cursor-blink {
+    animation: xterm-cursor-blink 1.2s infinite step-end;
+}
+
+@keyframes xterm-cursor-blink {
+    0%,
+    50% {
+        opacity: 1;
+    }
+    51%,
+    100% {
+        opacity: 0;
+    }
+}
+
+.xterm-selection {
+    background-color: rgba(51, 70, 124, 0.5) !important;
+}
+
+.xterm-char-measure-element {
+    visibility: hidden !important;
+}
+
+/* Scrollbar styling */
+.xterm .xterm-viewport::-webkit-scrollbar {
+    width: 8px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+    background: rgba(192, 202, 245, 0.3);
+    border-radius: 4px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: rgba(192, 202, 245, 0.5);
+}
+
+/* Link styling */
+.xterm-link-layer a {
+    color: #7dcfff !important;
+    text-decoration: underline !important;
+}
+
+.xterm-link-layer a:hover {
+    color: #9dd7ff !important;
+}
+
+/* Focus styling */
+.xterm:focus {
+    outline: none;
+}
+
+.xterm.focus .xterm-cursor-layer .xterm-cursor {
+    background-color: #c0caf5 !important;
+}
+
+/* Right-click context menu prevention */
+#terminal-container {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.xterm {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .xterm {
+        padding: 8px !important;
+    }
+}
+
+/* Tokyo Night theme variables */
+:root {
+    --terminal-bg: #1a1b26;
+    --terminal-fg: #c0caf5;
+    --terminal-selection: rgba(51, 70, 124, 0.5);
+    --terminal-cursor: #c0caf5;
+    --terminal-border: #3b4261;
+    --header-bg: #24283b;
+    --button-primary: #7aa2f7;
+    --button-primary-hover: #9bb5ff;
+    --button-success: #9ece6a;
+    --button-success-hover: #b9f27c;
+    --button-warning: #e0af68;
+    --button-warning-hover: #f0bf78;
+    --button-danger: #f7768e;
+    --button-danger-hover: #ff9db4;
+}
+
+/* Dark mode support for system preferences */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --terminal-bg: #1a1b26;
+        --terminal-fg: #c0caf5;
+    }
+}
+
+/* Animation for smooth transitions */
+* {
+    transition:
+        color 0.2s ease,
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        opacity 0.2s ease;
+}
+
+/* Focus indicators for accessibility */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    #terminal-container {
+        background: white !important;
+        color: black !important;
+    }
+
+    .xterm {
+        background: white !important;
+        color: black !important;
+    }
+}
+
+/* Responsive design for tabs */
+@media (max-width: 768px) {
+    #tabs-header {
+        padding: 0 8px;
+        min-height: 32px;
+    }
+
+    .tab {
+        min-width: 100px;
+        max-width: 150px;
+        height: 24px;
+    }
+
+    .tab-title {
+        font-size: 11px;
+        padding: 0 8px;
+    }
+
+    .tab-close {
+        width: 18px;
+        height: 18px;
+        margin-right: 4px;
+        font-size: 12px;
+    }
+
+    #new-tab-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+        margin-left: 6px;
+    }
+}
+
+/* Tab animations */
+@keyframes tab-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab {
+    animation: tab-fade-in 0.2s ease-out;
+}
+
+/* Focus styles for accessibility */
+.tab:focus {
+    outline: 2px solid #7aa2f7;
+    outline-offset: -2px;
+}
+
+.tab-close:focus {
+    outline: 2px solid #f7768e;
+    outline-offset: -2px;
+}
+
+#new-tab-btn:focus {
+    outline: 2px solid #9ece6a;
+    outline-offset: -2px;
+}
