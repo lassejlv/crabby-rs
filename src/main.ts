@@ -70,7 +70,6 @@ class TerminalManager {
   }
 
   private setupEventListeners() {
-    // Handle terminal input
     this.terminal.onData(async (data: string) => {
       if (this.sessionId) {
         try {
@@ -84,7 +83,6 @@ class TerminalManager {
       }
     });
 
-    // Handle terminal resize
     this.terminal.onResize(async ({ cols, rows }) => {
       if (this.sessionId) {
         try {
@@ -99,7 +97,6 @@ class TerminalManager {
       }
     });
 
-    // Listen for terminal output from backend
     listen("terminal-output", (event: any) => {
       const { session_id, data } = event.payload;
       if (session_id === this.sessionId) {
@@ -107,7 +104,6 @@ class TerminalManager {
       }
     });
 
-    // Listen for terminal exit
     listen("terminal-exit", (event: any) => {
       const sessionId = event.payload;
       if (sessionId === this.sessionId) {
@@ -116,7 +112,6 @@ class TerminalManager {
       }
     });
 
-    // Handle window resize
     window.addEventListener("resize", () => {
       this.fitTerminal();
     });
@@ -140,7 +135,6 @@ class TerminalManager {
 
   private fitTerminal() {
     if (this.terminalElement && this.terminal.element) {
-      // Small delay to ensure DOM is ready
       setTimeout(() => {
         this.fitAddon.fit();
       }, 10);
@@ -262,17 +256,14 @@ class TabManager {
     const tabTitle = title || `Terminal ${this.tabCounter}`;
     this.tabCounter++;
 
-    // Create terminal container
     const terminalElement = document.createElement("div");
     terminalElement.className = "terminal-content";
     terminalElement.style.display = "none";
     terminalElement.style.height = "100%";
     terminalElement.style.width = "100%";
 
-    // Create terminal manager
     const terminalManager = new TerminalManager(tabId);
 
-    // Store tab data
     const tabData: TabData = {
       id: tabId,
       title: tabTitle,
@@ -283,7 +274,6 @@ class TabManager {
     this.tabs.set(tabId, tabData);
     this.tabOrder.push(tabId);
 
-    // Add to DOM
     const container = document.getElementById("terminal-container");
     if (container) {
       container.appendChild(terminalElement);
@@ -298,20 +288,15 @@ class TabManager {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
 
-    // Don't close the last tab
     if (this.tabs.size <= 1) return;
 
-    // Dispose terminal
     tab.terminalManager.dispose();
 
-    // Remove from DOM
     tab.element.remove();
 
-    // Remove from tabs and order
     this.tabs.delete(tabId);
     this.tabOrder = this.tabOrder.filter((id) => id !== tabId);
 
-    // If this was the active tab, switch to another
     if (this.activeTabId === tabId) {
       if (this.tabOrder.length > 0) {
         this.setActiveTab(this.tabOrder[0]);
@@ -325,16 +310,13 @@ class TabManager {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
 
-    // Hide all terminals
     this.tabs.forEach((tabData) => {
       tabData.element.style.display = "none";
     });
 
-    // Show active terminal
     tab.element.style.display = "block";
     this.activeTabId = tabId;
 
-    // Focus terminal
     setTimeout(() => {
       tab.terminalManager.focus();
     }, 10);
@@ -434,16 +416,13 @@ class TabManager {
     const tabsContainer = document.getElementById("tabs-container");
     if (!tabsContainer) return;
 
-    // Show/hide tabs based on count
     const tabsHeader = document.getElementById("tabs-header");
     if (tabsHeader) {
       tabsHeader.style.display = this.tabs.size > 1 ? "flex" : "none";
     }
 
-    // Clear existing tabs
     tabsContainer.innerHTML = "";
 
-    // Create tab elements in order
     this.tabOrder.forEach((tabId) => {
       const tab = this.tabs.get(tabId);
       if (!tab) return;
@@ -462,7 +441,6 @@ class TabManager {
         <button class="tab-close" title="Close tab">&times;</button>
       `;
 
-      // Tab click handler
       tabElement.addEventListener("click", (e) => {
         if (
           !(e.target as HTMLElement).classList.contains("tab-close") &&
@@ -472,7 +450,6 @@ class TabManager {
         }
       });
 
-      // Tab double-click to rename
       const titleSpan = tabElement.querySelector(".tab-title");
       if (titleSpan) {
         titleSpan.addEventListener("dblclick", (e) => {
@@ -481,7 +458,6 @@ class TabManager {
         });
       }
 
-      // Tab close handler
       const closeBtn = tabElement.querySelector(".tab-close");
       if (closeBtn) {
         closeBtn.addEventListener("click", (e) => {
@@ -490,7 +466,6 @@ class TabManager {
         });
       }
 
-      // Drag and drop handlers
       tabElement.addEventListener("dragstart", (e) => {
         this.dragState.isDragging = true;
         this.dragState.draggedTabId = tab.id;
@@ -560,7 +535,6 @@ class TabManager {
   }
 }
 
-// Application state
 let tabManager: TabManager;
 
 function createUI() {
@@ -584,7 +558,6 @@ function setupEventHandlers() {
     });
   }
 
-  // Keyboard shortcuts
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey) {
       switch (e.key) {
@@ -673,7 +646,6 @@ function setupEventHandlers() {
       }
     }
 
-    // Tab switching with Ctrl+1, Ctrl+2, etc.
     if ((e.ctrlKey || e.metaKey) && e.key >= "1" && e.key <= "9") {
       e.preventDefault();
       const tabIndex = parseInt(e.key) - 1;
@@ -685,26 +657,8 @@ function setupEventHandlers() {
   });
 }
 
-// Initialize the application
-window.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   createUI();
-  setupEventHandlers();
-
   tabManager = new TabManager();
-});
-
-// Handle app focus
-window.addEventListener("focus", () => {
-  const activeTab = tabManager?.getActiveTab();
-  if (activeTab) {
-    activeTab.terminalManager.focus();
-  }
-});
-
-// Prevent context menu on terminal
-document.addEventListener("contextmenu", (e) => {
-  const terminalContainer = document.getElementById("terminal-container");
-  if (terminalContainer && terminalContainer.contains(e.target as Node)) {
-    e.preventDefault();
-  }
+  setupEventHandlers();
 });

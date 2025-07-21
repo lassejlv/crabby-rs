@@ -37,7 +37,6 @@ async fn create_terminal_session(
 
     let pty_system = portable_pty::native_pty_system();
 
-    // Determine the shell based on the operating system
     let shell = if cfg!(target_os = "windows") {
         "cmd.exe".to_string()
     } else {
@@ -65,7 +64,6 @@ async fn create_terminal_session(
         .try_clone_reader()
         .map_err(|e| format!("Failed to clone reader: {}", e))?;
 
-    // Store the master PTY and writer
     let writer = pty_pair
         .master
         .take_writer()
@@ -81,7 +79,6 @@ async fn create_terminal_session(
         writers.insert(session_id.clone(), Arc::new(Mutex::new(writer)));
     }
 
-    // Spawn a thread to read from the PTY and emit events
     let session_id_clone = session_id.clone();
     let app_handle_clone = app_handle.clone();
 
@@ -108,7 +105,6 @@ async fn create_terminal_session(
         }
     });
 
-    // Monitor child process
     let session_id_clone2 = session_id.clone();
     let app_handle_clone2 = app_handle.clone();
     let sessions_clone = state.sessions.clone();
@@ -117,7 +113,6 @@ async fn create_terminal_session(
     thread::spawn(move || {
         let _ = child.wait();
 
-        // Clean up session when child exits
         {
             let mut sessions = sessions_clone.lock().unwrap();
             sessions.remove(&session_id_clone2);
