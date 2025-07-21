@@ -43,7 +43,32 @@ async fn create_terminal_session(
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
     };
 
-    let cmd = CommandBuilder::new(&shell);
+    let mut cmd = CommandBuilder::new(&shell);
+
+    // Set essential environment variables for proper terminal operation
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+
+    // Preserve important environment variables from the parent process
+    if let Ok(path) = std::env::var("PATH") {
+        cmd.env("PATH", path);
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        cmd.env("HOME", home);
+    }
+    if let Ok(user) = std::env::var("USER") {
+        cmd.env("USER", user);
+    }
+    if let Ok(lang) = std::env::var("LANG") {
+        cmd.env("LANG", lang);
+    } else {
+        cmd.env("LANG", "en_US.UTF-8");
+    }
+
+    // Set working directory to user's home directory
+    if let Ok(home) = std::env::var("HOME") {
+        cmd.cwd(&home);
+    }
 
     let pty_pair = pty_system
         .openpty(PtySize {
