@@ -2,7 +2,7 @@
 
 <img src="src-tauri/icons/icon.png" alt="Crabby Icon" width="128" height="128">
 
-# 🦀 Crabby
+# Crabby
 
 ### Cross-platform terminal emulator written in Rust
 
