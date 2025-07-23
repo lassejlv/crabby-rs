@@ -1,5 +1,5 @@
 [package]
-name = "thinkle"
+name = "crabby"
 version = "0.2.0"
 description = "A fast, native-feel terminal emulator built with Rust and Tauri"
 authors = ["you"]

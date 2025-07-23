@@ -65,6 +65,39 @@ async fn create_terminal_session(
         cmd.env("LANG", "en_US.UTF-8");
     }
 
+    // Set Homebrew environment variables if available
+    // Ensure Homebrew paths are available even if not in environment
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let homebrew_paths = vec![
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+    ];
+
+    let mut path_components: Vec<&str> = current_path.split(':').collect();
+    for homebrew_path in &homebrew_paths {
+        if !path_components.contains(homebrew_path) {
+            path_components.insert(0, homebrew_path);
+        }
+    }
+    let enhanced_path = path_components.join(":");
+    cmd.env("PATH", enhanced_path);
+
+    // Set Homebrew environment variables if not already set
+    if std::env::var("HOMEBREW_PREFIX").is_err() {
+        // Try Apple Silicon path first, then Intel
+        let homebrew_prefix = if std::path::Path::new("/opt/homebrew").exists() {
+            "/opt/homebrew"
+        } else {
+            "/usr/local"
+        };
+        cmd.env("HOMEBREW_PREFIX", homebrew_prefix);
+        cmd.env("HOMEBREW_CELLAR", format!("{}/Cellar", homebrew_prefix));
+        cmd.env("HOMEBREW_REPOSITORY", homebrew_prefix);
+        cmd.env("INFOPATH", format!("{}/share/info:", homebrew_prefix));
+    }
+
     // Set working directory to user's home directory
     if let Ok(home) = std::env::var("HOME") {
         cmd.cwd(&home);

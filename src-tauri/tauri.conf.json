@@ -1,20 +1,20 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "thinkle",
+  "productName": "Crabby",
   "version": "0.1.0",
-  "identifier": "com.thikle.app",
+  "identifier": "com.crabby.app",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Thinkle",
-        "width": 1200,
+        "title": "Crabby",
+        "width": 1400,
         "height": 800,
         "minWidth": 400,
         "minHeight": 300,
@@ -37,7 +37,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
-    "icon": ["icons/icon.ico"]
+    "targets": "all"
   }
 }

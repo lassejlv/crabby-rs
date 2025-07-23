@@ -1,0 +1,68 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Crab body (main shell) -->
+  <ellipse cx="512" cy="512" rx="360" ry="220" fill="#e94560"/>
+  <ellipse cx="512" cy="512" rx="340" ry="200" fill="#ff6b6b"/>
+
+  <!-- Crab body segments -->
+  <ellipse cx="512" cy="430" rx="320" ry="45" fill="#cc5252" opacity="0.7"/>
+  <ellipse cx="512" cy="512" rx="320" ry="45" fill="#cc5252" opacity="0.7"/>
+  <ellipse cx="512" cy="594" rx="320" ry="45" fill="#cc5252" opacity="0.7"/>
+
+  <!-- Left claw arm -->
+  <ellipse cx="200" cy="480" rx="50" ry="160" fill="#e94560" transform="rotate(-15 200 480)"/>
+  <ellipse cx="200" cy="480" rx="45" ry="150" fill="#ff6b6b" transform="rotate(-15 200 480)"/>
+
+  <!-- Right claw arm -->
+  <ellipse cx="824" cy="480" rx="50" ry="160" fill="#e94560" transform="rotate(15 824 480)"/>
+  <ellipse cx="824" cy="480" rx="45" ry="150" fill="#ff6b6b" transform="rotate(15 824 480)"/>
+
+  <!-- Left claw -->
+  <ellipse cx="80" cy="400" rx="80" ry="100" fill="#e94560" transform="rotate(-30 80 400)"/>
+  <ellipse cx="80" cy="400" rx="75" ry="95" fill="#ff6b6b" transform="rotate(-30 80 400)"/>
+
+  <!-- Left claw pincer -->
+  <path d="M 20 340 Q -30 300 -50 360 Q -30 420 20 410 L 80 385 Z" fill="#cc5252"/>
+  <path d="M 80 450 Q 130 480 150 430 Q 130 380 80 390 L 20 415 Z" fill="#cc5252"/>
+
+  <!-- Right claw -->
+  <ellipse cx="944" cy="400" rx="80" ry="100" fill="#e94560" transform="rotate(30 944 400)"/>
+  <ellipse cx="944" cy="400" rx="75" ry="95" fill="#ff6b6b" transform="rotate(30 944 400)"/>
+
+  <!-- Right claw pincer -->
+  <path d="M 1004 340 Q 1054 300 1074 360 Q 1054 420 1004 410 L 944 385 Z" fill="#cc5252"/>
+  <path d="M 944 450 Q 894 480 874 430 Q 894 380 944 390 L 1004 415 Z" fill="#cc5252"/>
+
+  <!-- Eyes stalks -->
+  <ellipse cx="410" cy="360" rx="16" ry="70" fill="#e94560"/>
+  <ellipse cx="614" cy="360" rx="16" ry="70" fill="#e94560"/>
+
+  <!-- Eyes -->
+  <circle cx="410" cy="320" r="40" fill="#ffffff"/>
+  <circle cx="614" cy="320" r="40" fill="#ffffff"/>
+  <circle cx="410" cy="320" r="28" fill="#1a1a2e"/>
+  <circle cx="614" cy="320" r="28" fill="#1a1a2e"/>
+  <circle cx="417" cy="313" r="12" fill="#ffffff"/>
+  <circle cx="621" cy="313" r="12" fill="#ffffff"/>
+
+  <!-- Legs (left side) -->
+  <ellipse cx="280" cy="660" rx="22" ry="80" fill="#e94560" transform="rotate(-20 280 660)"/>
+  <ellipse cx="220" cy="730" rx="22" ry="80" fill="#e94560" transform="rotate(-10 220 730)"/>
+  <ellipse cx="180" cy="800" rx="22" ry="80" fill="#e94560" transform="rotate(0 180 800)"/>
+  <ellipse cx="220" cy="870" rx="22" ry="80" fill="#e94560" transform="rotate(10 220 870)"/>
+
+  <!-- Legs (right side) -->
+  <ellipse cx="744" cy="660" rx="22" ry="80" fill="#e94560" transform="rotate(20 744 660)"/>
+  <ellipse cx="804" cy="730" rx="22" ry="80" fill="#e94560" transform="rotate(10 804 730)"/>
+  <ellipse cx="844" cy="800" rx="22" ry="80" fill="#e94560" transform="rotate(0 844 800)"/>
+  <ellipse cx="804" cy="870" rx="22" ry="80" fill="#e94560" transform="rotate(-10 804 870)"/>
+
+  <!-- Shell pattern -->
+  <path d="M 300 480 Q 512 420 724 480 Q 620 540 512 550 Q 404 540 300 480 Z" fill="#cc5252" opacity="0.6"/>
+  <path d="M 320 560 Q 512 490 704 560 Q 608 620 512 630 Q 416 620 320 560 Z" fill="#cc5252" opacity="0.6"/>
+
+  <!-- Antennae -->
+  <line x1="400" y1="330" x2="340" y2="220" stroke="#e94560" stroke-width="10" stroke-linecap="round"/>
+  <line x1="624" y1="330" x2="684" y2="220" stroke="#e94560" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="340" cy="220" r="10" fill="#ff6b6b"/>
+  <circle cx="684" cy="220" r="10" fill="#ff6b6b"/>
+</svg>

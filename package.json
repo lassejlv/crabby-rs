@@ -1,5 +1,5 @@
 {
-  "name": "thinkle",
+  "name": "crabby",
   "description": "A fast, native-feel terminal emulator built with Rust and Tauri",
   "private": true,
   "version": "0.2.0",
