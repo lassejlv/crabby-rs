@@ -5,6 +5,11 @@
     box-sizing: border-box;
 }
 
+/* Remove Scrollbars */
+::-webkit-scrollbar {
+    display: none;
+}
+
 html,
 body {
     height: 100%;
