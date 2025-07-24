@@ -4,6 +4,24 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import { getVersion } from "@tauri-apps/api/app";
+import { message } from "@tauri-apps/plugin-dialog";
+
+// Command system interfaces
+interface Command {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  shortcut?: string;
+  icon?: string;
+  action: () => void | Promise<void>;
+}
+
+interface CommandGroup {
+  name: string;
+  commands: Command[];
+}
 
 interface TabData {
   id: string;
@@ -17,6 +35,256 @@ interface DragState {
   draggedTabId: string | null;
   dragStartX: number;
   dragOverTabId: string | null;
+}
+
+// Command system classes
+class CommandManager {
+  private commands: Map<string, Command> = new Map();
+  private commandGroups: Map<string, CommandGroup> = new Map();
+
+  registerCommand(command: Command): void {
+    this.commands.set(command.id, command);
+  }
+
+  unregisterCommand(id: string): void {
+    this.commands.delete(id);
+  }
+
+  getCommand(id: string): Command | undefined {
+    return this.commands.get(id);
+  }
+
+  getAllCommands(): Command[] {
+    return Array.from(this.commands.values());
+  }
+
+  searchCommands(query: string): Command[] {
+    const normalizedQuery = query.toLowerCase();
+    return this.getAllCommands().filter(
+      (command) =>
+        command.title.toLowerCase().includes(normalizedQuery) ||
+        command.description?.toLowerCase().includes(normalizedQuery) ||
+        command.category?.toLowerCase().includes(normalizedQuery),
+    );
+  }
+
+  executeCommand(id: string): void {
+    const command = this.commands.get(id);
+    if (command) {
+      command.action();
+    }
+  }
+
+  registerCommandGroup(group: CommandGroup): void {
+    this.commandGroups.set(group.name, group);
+    group.commands.forEach((command) => this.registerCommand(command));
+  }
+
+  getCommandGroups(): CommandGroup[] {
+    return Array.from(this.commandGroups.values());
+  }
+}
+
+class CommandPalette {
+  private isVisible: boolean = false;
+  private overlay: HTMLElement | null = null;
+  private searchInput: HTMLElement | null = null;
+  private commandList: HTMLElement | null = null;
+  private selectedIndex: number = 0;
+  private filteredCommands: Command[] = [];
+  private commandManager: CommandManager;
+
+  constructor(commandManager: CommandManager) {
+    this.commandManager = commandManager;
+    this.createPaletteHTML();
+    this.setupEventListeners();
+  }
+
+  private createPaletteHTML(): void {
+    const overlay = document.createElement("div");
+    overlay.id = "command-palette-overlay";
+    overlay.innerHTML = `
+      <div id="command-palette">
+        <div id="command-search-container">
+          <div id="command-search-icon">⌘</div>
+          <input
+            type="text"
+            id="command-search-input"
+            placeholder="Type a command or search..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div id="command-results">
+          <div id="command-list"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    this.overlay = overlay;
+    this.searchInput = overlay.querySelector("#command-search-input");
+    this.commandList = overlay.querySelector("#command-list");
+  }
+
+  private setupEventListeners(): void {
+    // Search input events
+    this.searchInput?.addEventListener("input", (e) => {
+      const query = (e.target as HTMLInputElement).value;
+      this.updateResults(query);
+    });
+
+    this.searchInput?.addEventListener("keydown", (e) => {
+      this.handleKeydown(e as KeyboardEvent);
+    });
+
+    // Overlay click to close
+    this.overlay?.addEventListener("click", (e) => {
+      if (e.target === this.overlay) {
+        this.hide();
+      }
+    });
+
+    // Global escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.isVisible) {
+        this.hide();
+      }
+    });
+  }
+
+  private handleKeydown(e: KeyboardEvent): void {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        this.selectedIndex = Math.min(
+          this.selectedIndex + 1,
+          this.filteredCommands.length - 1,
+        );
+        this.updateSelection();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        this.updateSelection();
+        break;
+      case "Enter":
+        e.preventDefault();
+        this.executeSelectedCommand();
+        break;
+      case "Escape":
+        e.preventDefault();
+        this.hide();
+        break;
+    }
+  }
+
+  private updateResults(query: string): void {
+    this.filteredCommands = query.trim()
+      ? this.commandManager.searchCommands(query)
+      : this.commandManager.getAllCommands();
+
+    this.selectedIndex = 0;
+    this.renderResults();
+  }
+
+  private renderResults(): void {
+    if (!this.commandList) return;
+
+    if (this.filteredCommands.length === 0) {
+      this.commandList.innerHTML =
+        '<div class="command-item-empty">No commands found</div>';
+      return;
+    }
+
+    this.commandList.innerHTML = this.filteredCommands
+      .map(
+        (command, index) => `
+        <div class="command-item ${index === this.selectedIndex ? "selected" : ""}" data-index="${index}">
+          <div class="command-item-content">
+            <div class="command-item-title">
+              ${command.icon ? `<span class="command-item-icon">${command.icon}</span>` : ""}
+              ${command.title}
+            </div>
+            ${command.description ? `<div class="command-item-description">${command.description}</div>` : ""}
+            ${command.shortcut ? `<div class="command-item-shortcut">${command.shortcut}</div>` : ""}
+          </div>
+          ${command.category ? `<div class="command-item-category">${command.category}</div>` : ""}
+        </div>
+      `,
+      )
+      .join("");
+
+    // Add click handlers
+    this.commandList
+      .querySelectorAll(".command-item")
+      .forEach((item, index) => {
+        item.addEventListener("click", () => {
+          this.selectedIndex = index;
+          this.executeSelectedCommand();
+        });
+      });
+  }
+
+  private updateSelection(): void {
+    const items = this.commandList?.querySelectorAll(".command-item");
+    items?.forEach((item, index) => {
+      item.classList.toggle("selected", index === this.selectedIndex);
+    });
+
+    // Scroll selected item into view
+    const selectedItem = items?.[this.selectedIndex] as HTMLElement;
+    if (selectedItem) {
+      selectedItem.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  private executeSelectedCommand(): void {
+    const command = this.filteredCommands[this.selectedIndex];
+    if (command) {
+      this.hide();
+      this.commandManager.executeCommand(command.id);
+    }
+  }
+
+  show(): void {
+    if (this.isVisible) return;
+
+    this.isVisible = true;
+    this.overlay?.classList.add("visible");
+    this.updateResults("");
+
+    // Focus search input
+    setTimeout(() => {
+      (this.searchInput as HTMLInputElement)?.focus();
+    }, 100);
+  }
+
+  hide(): void {
+    if (!this.isVisible) return;
+
+    this.isVisible = false;
+    this.overlay?.classList.remove("visible");
+
+    // Clear search
+    if (this.searchInput) {
+      (this.searchInput as HTMLInputElement).value = "";
+    }
+
+    // Return focus to terminal
+    const activeTab = tabManager?.getActiveTab();
+    if (activeTab?.terminalManager) {
+      activeTab.terminalManager.focus();
+    }
+  }
+
+  toggle(): void {
+    if (this.isVisible) {
+      this.hide();
+    } else {
+      this.show();
+    }
+  }
 }
 
 class TerminalManager {
@@ -98,17 +366,8 @@ class TerminalManager {
     });
 
     listen("terminal-output", (event: any) => {
-      const { session_id, data } = event.payload;
-      if (session_id === this.sessionId) {
-        this.terminal.write(data);
-      }
-    });
-
-    listen("terminal-exit", (event: any) => {
-      const sessionId = event.payload;
-      if (sessionId === this.sessionId) {
-        this.terminal.write("\r\n\x1b[31mTerminal session ended\x1b[0m\r\n");
-        this.sessionId = null;
+      if (event.payload.session_id === this.sessionId) {
+        this.terminal.write(event.payload.data);
       }
     });
 
@@ -117,111 +376,78 @@ class TerminalManager {
     });
   }
 
-  public async initialize(container: HTMLElement) {
-    this.terminalElement = container;
-    this.terminal.open(container);
-    this.fitTerminal();
-
+  async attachTo(container: HTMLElement): Promise<void> {
     try {
-      this.sessionId = await invoke("create_terminal_session");
+      this.terminalElement = container;
+      this.terminal.open(container);
+      this.fitTerminal();
+
+      const sessionId = await invoke("create_terminal_session", {});
+      this.sessionId = sessionId as string;
+
       this.terminal.focus();
     } catch (error) {
-      console.error("Failed to create terminal session:", error);
-      this.terminal.write(
-        "\r\n\x1b[31mFailed to create terminal session\x1b[0m\r\n",
-      );
+      console.error("Failed to attach terminal:", error);
     }
   }
 
-  private fitTerminal() {
-    if (this.terminalElement && this.terminal.element) {
-      setTimeout(() => {
-        this.fitAddon.fit();
-      }, 10);
-    }
-  }
-
-  public async createNewSession() {
-    try {
-      if (this.sessionId) {
-        await invoke("close_terminal_session", { sessionId: this.sessionId });
-      }
-
-      this.terminal.clear();
-      this.sessionId = await invoke("create_terminal_session");
-      this.terminal.focus();
-    } catch (error) {
-      console.error("Failed to create new terminal session:", error);
-      this.terminal.write(
-        "\r\n\x1b[31mFailed to create new terminal session\x1b[0m\r\n",
-      );
-    }
-  }
-
-  public async closeSession() {
-    if (this.sessionId) {
+  fitTerminal(): void {
+    if (this.terminalElement) {
       try {
-        await invoke("close_terminal_session", { sessionId: this.sessionId });
-        this.sessionId = null;
-        this.terminal.clear();
+        this.fitAddon.fit();
       } catch (error) {
-        console.error("Failed to close terminal session:", error);
+        console.error("Failed to fit terminal:", error);
       }
     }
   }
 
-  public focus() {
+  focus(): void {
     this.terminal.focus();
   }
 
-  public clear() {
-    this.terminal.clear();
-  }
-
-  public zoomIn() {
+  increaseFontSize(): void {
     if (this.currentFontSize < this.maxFontSize) {
       this.currentFontSize += this.fontSizeStep;
       this.updateFontSize();
     }
   }
 
-  public zoomOut() {
+  decreaseFontSize(): void {
     if (this.currentFontSize > this.minFontSize) {
       this.currentFontSize -= this.fontSizeStep;
       this.updateFontSize();
     }
   }
 
-  public resetZoom() {
+  resetFontSize(): void {
     this.currentFontSize = 14;
     this.updateFontSize();
   }
 
-  private updateFontSize() {
+  private updateFontSize(): void {
     this.terminal.options.fontSize = this.currentFontSize;
     this.fitTerminal();
-    this.updateZoomDisplay();
   }
 
-  private updateZoomDisplay() {
-    const zoomDisplay = document.getElementById("zoom-display");
-    if (zoomDisplay) {
-      const percentage = Math.round((this.currentFontSize / 14) * 100);
-      zoomDisplay.textContent = `${percentage}%`;
+  async dispose(): Promise<void> {
+    if (this.sessionId) {
+      try {
+        await invoke("close_terminal_session", {
+          sessionId: this.sessionId,
+        });
+      } catch (error) {
+        console.error("Failed to close terminal session:", error);
+      }
     }
-  }
-
-  public getCurrentFontSize(): number {
-    return this.currentFontSize;
-  }
-
-  public getTabId(): string {
-    return this.tabId;
-  }
-
-  public dispose() {
-    this.closeSession();
     this.terminal.dispose();
+  }
+
+  getSessionId(): string | null {
+    return this.sessionId;
+  }
+
+  getTabId(): string {
+    return this.tabId;
   }
 }
 
@@ -238,66 +464,78 @@ class TabManager {
   };
 
   constructor() {
-    this.createInitialTab();
+    this.createNewTab();
   }
 
-  private generateTabId(): string {
-    return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
+  async createNewTab(title?: string): Promise<string> {
+    const id = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const defaultTitle = title || `Terminal ${this.tabCounter++}`;
 
-  private async createInitialTab() {
-    const tabId = this.generateTabId();
-    await this.createTab(tabId, "Terminal");
-    this.setActiveTab(tabId);
-  }
+    const terminalManager = new TerminalManager(id);
 
-  public async createTab(id?: string, title?: string): Promise<string> {
-    const tabId = id || this.generateTabId();
-    const tabTitle = title || `Terminal ${this.tabCounter}`;
-    this.tabCounter++;
+    const tabElement = document.createElement("div");
+    tabElement.className = "tab";
+    tabElement.setAttribute("draggable", "true");
 
-    const terminalElement = document.createElement("div");
-    terminalElement.className = "terminal-content";
-    terminalElement.style.display = "none";
-    terminalElement.style.height = "100%";
-    terminalElement.style.width = "100%";
-
-    const terminalManager = new TerminalManager(tabId);
-
-    const tabData: TabData = {
-      id: tabId,
-      title: tabTitle,
+    const tab: TabData = {
+      id,
+      title: defaultTitle,
       terminalManager,
-      element: terminalElement,
+      element: tabElement,
     };
 
-    this.tabs.set(tabId, tabData);
-    this.tabOrder.push(tabId);
+    this.tabs.set(id, tab);
+    this.tabOrder.push(id);
 
-    const container = document.getElementById("terminal-container");
-    if (container) {
-      container.appendChild(terminalElement);
-      await terminalManager.initialize(terminalElement);
+    await this.setActiveTab(id);
+    this.updateTabsUI();
+
+    return id;
+  }
+
+  async setActiveTab(id: string): Promise<void> {
+    const tab = this.tabs.get(id);
+    if (!tab) return;
+
+    // Hide current active tab content
+    if (this.activeTabId) {
+      const currentTab = this.tabs.get(this.activeTabId);
+      if (currentTab) {
+        const terminalContainer = document.getElementById("terminal-container");
+        if (terminalContainer) {
+          terminalContainer.innerHTML = "";
+        }
+      }
+    }
+
+    this.activeTabId = id;
+
+    // Show new active tab content
+    const terminalContainer = document.getElementById("terminal-container");
+    if (terminalContainer) {
+      const terminalElement = document.createElement("div");
+      terminalElement.className = "terminal-content";
+      terminalContainer.appendChild(terminalElement);
+
+      await tab.terminalManager.attachTo(terminalElement);
     }
 
     this.updateTabsUI();
-    return tabId;
   }
 
-  public closeTab(tabId: string) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return;
-
-    if (this.tabs.size <= 1) return;
+  closeTab(id: string): void {
+    const tab = this.tabs.get(id);
+    if (!tab || this.tabs.size <= 1) return;
 
     tab.terminalManager.dispose();
+    this.tabs.delete(id);
 
-    tab.element.remove();
+    const index = this.tabOrder.indexOf(id);
+    if (index > -1) {
+      this.tabOrder.splice(index, 1);
+    }
 
-    this.tabs.delete(tabId);
-    this.tabOrder = this.tabOrder.filter((id) => id !== tabId);
-
-    if (this.activeTabId === tabId) {
+    if (this.activeTabId === id) {
       if (this.tabOrder.length > 0) {
         this.setActiveTab(this.tabOrder[0]);
       }
@@ -306,61 +544,22 @@ class TabManager {
     this.updateTabsUI();
   }
 
-  public setActiveTab(tabId: string) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return;
-
-    this.tabs.forEach((tabData) => {
-      tabData.element.style.display = "none";
-    });
-
-    tab.element.style.display = "block";
-    this.activeTabId = tabId;
-
-    setTimeout(() => {
-      tab.terminalManager.focus();
-    }, 10);
-
-    this.updateTabsUI();
+  getActiveTab(): TabData | null {
+    if (this.activeTabId) {
+      return this.tabs.get(this.activeTabId) || null;
+    }
+    return null;
   }
 
-  public getActiveTab(): TabData | null {
-    return this.activeTabId ? this.tabs.get(this.activeTabId) || null : null;
-  }
-
-  public getAllTabs(): TabData[] {
-    return this.tabOrder.map((id) => this.tabs.get(id)!).filter(Boolean);
-  }
-
-  public renameTab(tabId: string, newTitle: string) {
-    const tab = this.tabs.get(tabId);
+  renameTab(id: string, newTitle: string): void {
+    const tab = this.tabs.get(id);
     if (tab) {
       tab.title = newTitle;
       this.updateTabsUI();
     }
   }
 
-  public moveTab(fromIndex: number, toIndex: number) {
-    if (
-      fromIndex === toIndex ||
-      fromIndex < 0 ||
-      toIndex < 0 ||
-      fromIndex >= this.tabOrder.length ||
-      toIndex >= this.tabOrder.length
-    ) {
-      return;
-    }
-
-    const [movedId] = this.tabOrder.splice(fromIndex, 1);
-    this.tabOrder.splice(toIndex, 0, movedId);
-    this.updateTabsUI();
-  }
-
-  public getTabIndex(tabId: string): number {
-    return this.tabOrder.indexOf(tabId);
-  }
-
-  private startRenaming(tabId: string, titleElement: HTMLElement) {
+  private startRenaming(tabId: string, titleElement: HTMLElement): void {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
 
@@ -368,26 +567,13 @@ class TabManager {
     input.type = "text";
     input.value = tab.title;
     input.className = "tab-title-input";
-    input.style.cssText = `
-      background: transparent;
-      border: 1px solid #7aa2f7;
-      border-radius: 3px;
-      color: #c0caf5;
-      font-size: 12px;
-      font-family: inherit;
-      padding: 2px 4px;
-      width: 100%;
-      outline: none;
-    `;
 
     const finishRename = () => {
-      const newTitle =
-        input.value.trim() || `Terminal ${this.getTabIndex(tabId) + 1}`;
+      const newTitle = input.value.trim() || tab.title;
       this.renameTab(tabId, newTitle);
-    };
-
-    const cancelRename = () => {
-      this.updateTabsUI();
+      titleElement.textContent = newTitle;
+      titleElement.style.display = "";
+      input.remove();
     };
 
     input.addEventListener("blur", finishRename);
@@ -397,29 +583,25 @@ class TabManager {
         finishRename();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        cancelRename();
+        titleElement.style.display = "";
+        input.remove();
       }
     });
 
-    titleElement.innerHTML = "";
-    titleElement.appendChild(input);
+    titleElement.style.display = "none";
+    titleElement.parentNode?.insertBefore(input, titleElement.nextSibling);
     input.focus();
     input.select();
   }
 
-  private updateTabsUI() {
+  private updateTabsUI(): void {
     this.renderTabs();
-    this.updateActiveTabStyles();
+    this.updateTabsHeaderVisibility();
   }
 
-  private renderTabs() {
+  private renderTabs(): void {
     const tabsContainer = document.getElementById("tabs-container");
     if (!tabsContainer) return;
-
-    const tabsHeader = document.getElementById("tabs-header");
-    if (tabsHeader) {
-      tabsHeader.style.display = this.tabs.size > 1 ? "flex" : "none";
-    }
 
     tabsContainer.innerHTML = "";
 
@@ -428,17 +610,13 @@ class TabManager {
       if (!tab) return;
 
       const tabElement = document.createElement("div");
-      tabElement.className = "tab";
-      tabElement.dataset.tabId = tab.id;
-      tabElement.draggable = true;
-
-      if (tab.id === this.activeTabId) {
-        tabElement.classList.add("active");
-      }
-
+      tabElement.className = `tab ${
+        this.activeTabId === tabId ? "active" : ""
+      }`;
+      tabElement.setAttribute("draggable", "true");
       tabElement.innerHTML = `
-        <span class="tab-title">${tab.title}</span>
-        <button class="tab-close" title="Close tab">&times;</button>
+        <span class="tab-title" title="${tab.title}">${tab.title}</span>
+        <button class="tab-close" title="Close Tab">×</button>
       `;
 
       tabElement.addEventListener("click", (e) => {
@@ -471,7 +649,6 @@ class TabManager {
         this.dragState.draggedTabId = tab.id;
         this.dragState.dragStartX = e.clientX;
         tabElement.classList.add("dragging");
-        e.dataTransfer!.effectAllowed = "move";
       });
 
       tabElement.addEventListener("dragend", () => {
@@ -479,15 +656,13 @@ class TabManager {
         this.dragState.draggedTabId = null;
         this.dragState.dragOverTabId = null;
         tabElement.classList.remove("dragging");
-        document.querySelectorAll(".tab").forEach((t) => {
-          t.classList.remove("drag-over");
-        });
+        this.clearDragStyles();
       });
 
       tabElement.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (
-          this.dragState.draggedTabId &&
+          this.dragState.isDragging &&
           this.dragState.draggedTabId !== tab.id
         ) {
           this.dragState.dragOverTabId = tab.id;
@@ -505,37 +680,45 @@ class TabManager {
           this.dragState.draggedTabId &&
           this.dragState.draggedTabId !== tab.id
         ) {
-          const fromIndex = this.getTabIndex(this.dragState.draggedTabId);
-          const toIndex = this.getTabIndex(tab.id);
-          this.moveTab(fromIndex, toIndex);
+          this.reorderTabs(this.dragState.draggedTabId, tab.id);
         }
-        tabElement.classList.remove("drag-over");
+        this.clearDragStyles();
       });
 
       tabsContainer.appendChild(tabElement);
     });
   }
 
-  private updateActiveTabStyles() {
-    const tabs = document.querySelectorAll(".tab");
-    tabs.forEach((tab) => {
-      const tabId = (tab as HTMLElement).dataset.tabId;
-      if (tabId === this.activeTabId) {
-        tab.classList.add("active");
-      } else {
-        tab.classList.remove("active");
-      }
+  private clearDragStyles(): void {
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.classList.remove("dragging", "drag-over");
     });
   }
 
-  public async createNewTab(): Promise<string> {
-    const tabId = await this.createTab();
-    this.setActiveTab(tabId);
-    return tabId;
+  private reorderTabs(draggedTabId: string, targetTabId: string): void {
+    const draggedIndex = this.tabOrder.indexOf(draggedTabId);
+    const targetIndex = this.tabOrder.indexOf(targetTabId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    this.tabOrder.splice(draggedIndex, 1);
+    this.tabOrder.splice(targetIndex, 0, draggedTabId);
+
+    this.renderTabs();
+  }
+
+  private updateTabsHeaderVisibility(): void {
+    const tabsHeader = document.getElementById("tabs-header");
+    if (tabsHeader) {
+      tabsHeader.style.display = this.tabs.size > 1 ? "flex" : "none";
+    }
   }
 }
 
+// Global variables
 let tabManager: TabManager;
+let commandManager: CommandManager;
+let commandPalette: CommandPalette;
 
 function createUI() {
   document.body.innerHTML = `
@@ -549,6 +732,114 @@ function createUI() {
   `;
 }
 
+function setupDefaultCommands(
+  commandManager: CommandManager,
+  tabManager: TabManager,
+) {
+  // Tab management commands
+  commandManager.registerCommand({
+    id: "tab.new",
+    title: "New Tab",
+    description: "Create a new terminal tab",
+    category: "Tabs",
+    shortcut: "Ctrl+T",
+    icon: "➕",
+    action: async () => {
+      await tabManager.createNewTab();
+    },
+  });
+
+  commandManager.registerCommand({
+    id: "tab.close",
+    title: "Close Tab",
+    description: "Close the current tab",
+    category: "Tabs",
+    shortcut: "Ctrl+W",
+    icon: "✕",
+    action: () => {
+      const activeTab = tabManager.getActiveTab();
+      if (activeTab) {
+        tabManager.closeTab(activeTab.id);
+      }
+    },
+  });
+
+  // Terminal commands
+  commandManager.registerCommand({
+    id: "terminal.font-increase",
+    title: "Increase Font Size",
+    description: "Make terminal text larger",
+    category: "Terminal",
+    shortcut: "Ctrl+Plus",
+    icon: "🔍",
+    action: () => {
+      const activeTab = tabManager.getActiveTab();
+      if (activeTab?.terminalManager) {
+        activeTab.terminalManager.increaseFontSize();
+      }
+    },
+  });
+
+  commandManager.registerCommand({
+    id: "terminal.font-decrease",
+    title: "Decrease Font Size",
+    description: "Make terminal text smaller",
+    category: "Terminal",
+    shortcut: "Ctrl+Minus",
+    icon: "🔍",
+    action: () => {
+      const activeTab = tabManager.getActiveTab();
+      if (activeTab?.terminalManager) {
+        activeTab.terminalManager.decreaseFontSize();
+      }
+    },
+  });
+
+  commandManager.registerCommand({
+    id: "terminal.font-reset",
+    title: "Reset Font Size",
+    description: "Reset terminal font to default size",
+    category: "Terminal",
+    shortcut: "Ctrl+0",
+    icon: "↺",
+    action: () => {
+      const activeTab = tabManager.getActiveTab();
+      if (activeTab?.terminalManager) {
+        activeTab.terminalManager.resetFontSize();
+      }
+    },
+  });
+
+  // Application commands
+  commandManager.registerCommand({
+    id: "app.reload",
+    title: "Reload Application",
+    description: "Reload the terminal application",
+    category: "Application",
+    shortcut: "Ctrl+R",
+    icon: "↻",
+    action: () => window.location.reload(),
+  });
+
+  commandManager.registerCommand({
+    id: "app.about",
+    title: "About Crabby",
+    description: "Show information about this terminal",
+    category: "Application",
+    icon: "ℹ️",
+    action: async () => {
+      const appVersion = await getVersion();
+
+      const messageTXT = `Crabby Terminal\nVersion: ${appVersion}\n\nThis terminal is built with Tauri and Rust.\n\nFor more information, visit the GitHub repository.`;
+
+      await message(messageTXT, {
+        title: "About",
+        kind: "info",
+      });
+    },
+  });
+}
+
 function setupEventHandlers() {
   const newTabBtn = document.getElementById("new-tab-btn");
 
@@ -558,100 +849,65 @@ function setupEventHandlers() {
     });
   }
 
+  // Command palette shortcut
   document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "p") {
+      e.preventDefault();
+      commandPalette.toggle();
+      return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
       switch (e.key) {
         case "t":
           e.preventDefault();
           tabManager.createNewTab();
           break;
-        case "w": {
+        case "w":
           e.preventDefault();
           const activeTab = tabManager.getActiveTab();
-          if (activeTab && tabManager.getAllTabs().length > 1) {
+          if (activeTab) {
             tabManager.closeTab(activeTab.id);
-          } else if (activeTab) {
-            activeTab.terminalManager.closeSession();
           }
           break;
-        }
-        case "n": {
-          e.preventDefault();
-          const activeTab = tabManager.getActiveTab();
-          if (activeTab) {
-            activeTab.terminalManager.createNewSession();
-          }
-          break;
-        }
-        case "k": {
-          e.preventDefault();
-          const activeTab = tabManager.getActiveTab();
-          if (activeTab) {
-            activeTab.terminalManager.clear();
-          }
-          break;
-        }
         case "=":
-        case "+": {
+        case "+":
           e.preventDefault();
-          const activeTab = tabManager.getActiveTab();
-          if (activeTab) {
-            activeTab.terminalManager.zoomIn();
+          const activeTabIncrease = tabManager.getActiveTab();
+          if (activeTabIncrease?.terminalManager) {
+            activeTabIncrease.terminalManager.increaseFontSize();
           }
           break;
-        }
-        case "-": {
+        case "-":
           e.preventDefault();
-          const activeTab = tabManager.getActiveTab();
-          if (activeTab) {
-            activeTab.terminalManager.zoomOut();
+          const activeTabDecrease = tabManager.getActiveTab();
+          if (activeTabDecrease?.terminalManager) {
+            activeTabDecrease.terminalManager.decreaseFontSize();
           }
           break;
-        }
-        case "0": {
+        case "0":
           e.preventDefault();
-          const activeTab = tabManager.getActiveTab();
-          if (activeTab) {
-            activeTab.terminalManager.resetZoom();
+          const activeTabReset = tabManager.getActiveTab();
+          if (activeTabReset?.terminalManager) {
+            activeTabReset.terminalManager.resetFontSize();
           }
           break;
-        }
-        case "ArrowLeft": {
-          if (e.shiftKey) {
+        case "r":
+          if (!e.shiftKey) {
             e.preventDefault();
-            const activeTab = tabManager.getActiveTab();
-            if (activeTab) {
-              const currentIndex = tabManager.getTabIndex(activeTab.id);
-              if (currentIndex > 0) {
-                tabManager.moveTab(currentIndex, currentIndex - 1);
-              }
-            }
+            window.location.reload();
           }
           break;
-        }
-        case "ArrowRight": {
-          if (e.shiftKey) {
-            e.preventDefault();
-            const activeTab = tabManager.getActiveTab();
-            if (activeTab) {
-              const currentIndex = tabManager.getTabIndex(activeTab.id);
-              const maxIndex = tabManager.getAllTabs().length - 1;
-              if (currentIndex < maxIndex) {
-                tabManager.moveTab(currentIndex, currentIndex + 1);
-              }
-            }
-          }
-          break;
-        }
       }
     }
 
+    // Tab switching with Ctrl+number
     if ((e.ctrlKey || e.metaKey) && e.key >= "1" && e.key <= "9") {
       e.preventDefault();
       const tabIndex = parseInt(e.key) - 1;
-      const tabs = tabManager.getAllTabs();
-      if (tabs[tabIndex]) {
-        tabManager.setActiveTab(tabs[tabIndex].id);
+      const tabId = tabManager["tabOrder"][tabIndex];
+      if (tabId) {
+        tabManager.setActiveTab(tabId);
       }
     }
   });
@@ -659,6 +915,16 @@ function setupEventHandlers() {
 
 document.addEventListener("DOMContentLoaded", () => {
   createUI();
+
+  // Initialize command system
+  commandManager = new CommandManager();
+  commandPalette = new CommandPalette(commandManager);
+
+  // Initialize tab manager
   tabManager = new TabManager();
+
+  // Setup default commands
+  setupDefaultCommands(commandManager, tabManager);
+
   setupEventHandlers();
 });
