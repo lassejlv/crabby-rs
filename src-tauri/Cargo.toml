@@ -1,6 +1,6 @@
 [package]
 name = "crabby"
-version = "0.0.6"
+version = "0.0.7"
 description = "Cross-platform terminal emulator written in Rust"
 authors = ["you"]
 edition = "2021"
